@@ -76,7 +76,7 @@
 {
     _bands = bands;
     [self setMaxNumberOfBands:_bands.count];
-    for (NSUInteger i=0; i<bands.count; i++) {
+    for (UInt32 i=0; i<bands.count; i++) {
         AudioUnitSetParameter(bandEQunit,
                               kAUNBandEQParam_Frequency+i,
                               kAudioUnitScope_Global,
@@ -117,7 +117,7 @@
 
 -(void)setGainForBandAtPosition:(NSInteger)bandPosition value:(float)gain
 {
-    AudioUnitParameterID parameterID = kAUNBandEQParam_Gain + bandPosition;
+    AudioUnitParameterID parameterID = (UInt32) kAUNBandEQParam_Gain + bandPosition;
     AudioUnitSetParameter(bandEQunit,
                           parameterID,
                           kAudioUnitScope_Global,
