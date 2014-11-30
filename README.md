@@ -1,9 +1,9 @@
 # CPAudioPlayer
 
 [![Build Status](https://travis-ci.org/clementprem/CPAudioPlayer.svg?branch=master)](https://travis-ci.org/clementprem/CPAudioPlayer)
-[![Version](https://img.shields.io/cocoapods/v/CPAudioPlayer.svg?style=flat)](http://cocoadocs.org/docsets/CPAudioPlayer)
-[![License](https://img.shields.io/cocoapods/l/CPAudioPlayer.svg?style=flat)](http://cocoadocs.org/docsets/CPAudioPlayer)
-[![Platform](https://img.shields.io/cocoapods/p/CPAudioPlayer.svg?style=flat)](http://cocoadocs.org/docsets/CPAudioPlayer)
+##[![Version](https://img.shields.io/cocoapods/v/CPAudioPlayer.svg?style=flat)](http://cocoadocs.org/docsets/CPAudioPlayer)
+##[![License](https://img.shields.io/cocoapods/l/CPAudioPlayer.svg?style=flat)](http://cocoadocs.org/docsets/CPAudioPlayer)
+##[![Platform](https://img.shields.io/cocoapods/p/CPAudioPlayer.svg?style=flat)](http://cocoadocs.org/docsets/CPAudioPlayer)
 
 ## Usage
 
