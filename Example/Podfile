@@ -1,0 +1,12 @@
+source 'https://github.com/CocoaPods/Specs.git'
+
+target 'CPAudioPlayer', :exclusive => true do
+  pod "CPAudioPlayer", :path => "../"
+end
+
+target 'Tests', :exclusive => true do
+  pod "CPAudioPlayer", :path => "../"
+
+  pod 'Specta', '~> 0.2.1'
+  pod 'Expecta'
+end
