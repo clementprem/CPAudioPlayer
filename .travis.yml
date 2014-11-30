@@ -1,3 +1,0 @@
-language: objective-c
-xcode_project: Demo/DemoAudioPlayer/DemoAudioPlayer.xcodeproj
-xcode_scheme: DemoAudioPlayer
