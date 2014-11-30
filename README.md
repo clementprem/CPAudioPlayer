@@ -20,7 +20,7 @@ it, simply add the following line to your Podfile:
 
 ## Author
 
-Clement Prem, clement@hsenidoutsourcing.com
+Clement Prem, clementprem@gmail.com
 
 ## License
 

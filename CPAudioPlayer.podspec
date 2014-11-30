@@ -10,19 +10,19 @@
 Pod::Spec.new do |s|
   s.name             = "CPAudioPlayer"
   s.version          = "0.1.0"
-  s.summary          = "A short description of CPAudioPlayer."
+  s.summary          = "An audio player with simple interface to effects using audio units"
   s.description      = <<-DESC
-                       An optional longer description of CPAudioPlayer
+                      CPAudioPlayer allow you to work with audio units using a simple and intuitive interface.
 
                        * Markdown format.
                        * Don't worry about the indent, we strip it!
                        DESC
-  s.homepage         = "https://github.com/<GITHUB_USERNAME>/CPAudioPlayer"
+  s.homepage         = "https://github.com/clementprem/CPAudioPlayer"
   # s.screenshots     = "www.example.com/screenshots_1", "www.example.com/screenshots_2"
   s.license          = 'MIT'
-  s.author           = { "Clement Prem" => "clement@hsenidoutsourcing.com" }
-  s.source           = { :git => "https://github.com/<GITHUB_USERNAME>/CPAudioPlayer.git", :tag => s.version.to_s }
-  # s.social_media_url = 'https://twitter.com/<TWITTER_USERNAME>'
+  s.author           = { "Clement Prem" => "clementprem@gmail.com" }
+  s.source           = { :git => "https://github.com/clementprem/CPAudioPlayer.git", :tag => s.version.to_s }
+  # s.social_media_url = 'https://twitter.com/clement_prem'
 
   s.platform     = :ios, '7.0'
   s.requires_arc = true
