@@ -22,7 +22,7 @@ typedef struct {
     AudioUnit filePlayerUnit;
     AudioUnit reverbUnit;
     AudioUnit testUnit;
-    Float64 playBackStartFrame; //The frame the player should start playing, when pauesed & resume
+    Float64 playBackStartFrame; //indicating the frame the player should start playing, when pauesed & resume
     ScheduledAudioFileRegion region;
 }CPPlayer;
 

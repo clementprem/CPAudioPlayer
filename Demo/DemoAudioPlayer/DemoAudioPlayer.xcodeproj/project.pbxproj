@@ -18,8 +18,6 @@
 		EBD058631A28F88E00001948 /* CPAudioPlayer.mm in Sources */ = {isa = PBXBuildFile; fileRef = EBD0585A1A28F88E00001948 /* CPAudioPlayer.mm */; };
 		EBD058641A28F88E00001948 /* CPBandEqulizer.m in Sources */ = {isa = PBXBuildFile; fileRef = EBD0585C1A28F88E00001948 /* CPBandEqulizer.m */; };
 		EBD058651A28F88E00001948 /* CPReverbEngine.m in Sources */ = {isa = PBXBuildFile; fileRef = EBD0585E1A28F88E00001948 /* CPReverbEngine.m */; };
-		EBD058661A28F88E00001948 /* CPUtils.c in Sources */ = {isa = PBXBuildFile; fileRef = EBD0585F1A28F88E00001948 /* CPUtils.c */; };
-		EBD058671A28F88E00001948 /* CPUtlities.m in Sources */ = {isa = PBXBuildFile; fileRef = EBD058621A28F88E00001948 /* CPUtlities.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,10 +51,6 @@
 		EBD0585C1A28F88E00001948 /* CPBandEqulizer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CPBandEqulizer.m; sourceTree = "<group>"; };
 		EBD0585D1A28F88E00001948 /* CPReverbEngine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CPReverbEngine.h; sourceTree = "<group>"; };
 		EBD0585E1A28F88E00001948 /* CPReverbEngine.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CPReverbEngine.m; sourceTree = "<group>"; };
-		EBD0585F1A28F88E00001948 /* CPUtils.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = CPUtils.c; sourceTree = "<group>"; };
-		EBD058601A28F88E00001948 /* CPUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CPUtils.h; sourceTree = "<group>"; };
-		EBD058611A28F88E00001948 /* CPUtlities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CPUtlities.h; sourceTree = "<group>"; };
-		EBD058621A28F88E00001948 /* CPUtlities.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CPUtlities.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -147,10 +141,6 @@
 				EBD0585C1A28F88E00001948 /* CPBandEqulizer.m */,
 				EBD0585D1A28F88E00001948 /* CPReverbEngine.h */,
 				EBD0585E1A28F88E00001948 /* CPReverbEngine.m */,
-				EBD0585F1A28F88E00001948 /* CPUtils.c */,
-				EBD058601A28F88E00001948 /* CPUtils.h */,
-				EBD058611A28F88E00001948 /* CPUtlities.h */,
-				EBD058621A28F88E00001948 /* CPUtlities.m */,
 			);
 			name = CPAudioPlayer;
 			path = ../../CPAudioPlayer;
@@ -256,14 +246,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				EBD058671A28F88E00001948 /* CPUtlities.m in Sources */,
 				EBD058651A28F88E00001948 /* CPReverbEngine.m in Sources */,
 				EBD058631A28F88E00001948 /* CPAudioPlayer.mm in Sources */,
 				EBD058351A28F86B00001948 /* AppDelegate.m in Sources */,
 				EBD058641A28F88E00001948 /* CPBandEqulizer.m in Sources */,
 				EBD058381A28F86B00001948 /* DemoAudioPlayer.xcdatamodeld in Sources */,
 				EBD0583B1A28F86B00001948 /* ViewController.m in Sources */,
-				EBD058661A28F88E00001948 /* CPUtils.c in Sources */,
 				EBD058321A28F86B00001948 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -455,6 +443,7 @@
 				EBD058541A28F86C00001948 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		EBD058551A28F86C00001948 /* Build configuration list for PBXNativeTarget "DemoAudioPlayerTests" */ = {
 			isa = XCConfigurationList;
@@ -463,6 +452,7 @@
 				EBD058571A28F86C00001948 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 

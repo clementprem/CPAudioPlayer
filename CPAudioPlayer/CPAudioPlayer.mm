@@ -9,10 +9,9 @@
 #import "CPAudioPlayer.h"
 #import "CPBandEqulizer.h"
 #import <AVFoundation/AVFoundation.h>
+
 //:TODO
-//Reverb unit
-//Handle uninitilizing of stuffs
-//Bass, Treble clean up repeating stuffs
+//Handle uninitilizing
 //...
 
 @interface CPAudioPlayer ()
