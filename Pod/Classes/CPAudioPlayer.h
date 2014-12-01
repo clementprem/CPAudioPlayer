@@ -36,8 +36,6 @@ typedef void (^_songPlayCompletionHandler)();
 {
     @private CFArrayRef eqPresetArray;
 }
-
-@property (nonatomic)CPPlayer myPlayer;
 @property (nonatomic)double playBackduration;
 @property (nonatomic, strong, readonly)NSURL *songUrl;
 @property (readonly, nonatomic)double currentPlaybackTime;
@@ -85,4 +83,9 @@ typedef void (^_songPlayCompletionHandler)();
 //Reverb
 -(void)setReverbType:(int)reverbParam value:(float)value;
 -(float)getReverbVauleForType:(int)reverbParam;
+
+//Testing
+-(void)setDynamicProcess:(float)value parameter:(UInt32)parameterID;
+-(void)removeTestNode;
+
 @end
