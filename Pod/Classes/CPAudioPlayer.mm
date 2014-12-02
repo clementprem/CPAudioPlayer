@@ -57,7 +57,7 @@ void createAuGraph(CPPlayer *player) {
     AUNode trebleNode = createAndAddNodeToGraphWithType(kAudioUnitType_Effect, kAudioUnitSubType_LowShelfFilter);
     AUNode reverbNode = createAndAddNodeToGraphWithType(kAudioUnitType_Effect, kAudioUnitSubType_Reverb2);
     AUNode delayNode = createAndAddNodeToGraphWithType(kAudioUnitType_Effect, kAudioUnitSubType_Delay);
-    testNode = createAndAddNodeToGraphWithType(kAudioUnitType_Effect, kAudioUnitSubType_DynamicsProcessor);
+    testNode = createAndAddNodeToGraphWithType(kAudioUnitType_Effect, kAudioUnitSubType_PeakLimiter);
     AUNode converterNode = createAndAddNodeToGraphWithType(kAudioUnitType_FormatConverter, kAudioUnitSubType_AUConverter);
     AUNode bassBoostConverterNode = createAndAddNodeToGraphWithType(kAudioUnitType_FormatConverter, kAudioUnitSubType_AUConverter);
     AUNode trebleConverterNode = createAndAddNodeToGraphWithType(kAudioUnitType_FormatConverter, kAudioUnitSubType_AUConverter);
@@ -278,11 +278,6 @@ void resetGraph() {
         globalCPPlayer.playBackStartFrame = 0.0;
         globalPlayer = self;
         [self setDefaultValueForUnits];
-        AudioUnitSetParameter(globalCPPlayer.testUnit, kDynamicsProcessorParam_AttackTime, kAudioUnitScope_Global, 0, 0.0002, 0);
-        AudioUnitSetParameter(globalCPPlayer.testUnit, kDynamicsProcessorParam_ReleaseTime, kAudioUnitScope_Global, 0, .05, 0);
-//        AudioUnitSetParameter(globalCPPlayer.testUnit, kDynamicsProcessorParam_ExpansionRatio, kAudioUnitScope_Global, 0, 50.0, 0);
-
-    
         return self;
     }
     return nil;
