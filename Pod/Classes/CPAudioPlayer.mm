@@ -204,7 +204,6 @@ OSStatus playRenderNotify(void *                      inRefCon,
     if (*ioActionFlags & kAudioUnitRenderAction_PostRender) {
         float value;
         AudioUnitGetParameter(globalCPPlayer.testUnit, kDynamicsProcessorParam_CompressionAmount, kAudioUnitScope_Global, 0, &value);
-        printf("kDynamicsProcessorParam_CompressionAmount  : %f \n", value);
         double currentPlayTime =  [globalPlayer currentPlaybackTime];
         double totalDuration = globalPlayer.playBackduration;
         if (currentPlayTime >= totalDuration) {
@@ -465,32 +464,34 @@ void resetGraph() {
     return value;
 }
 
--(void)setReverbType:(int)reverbParam value:(float)value
-{
-    AudioUnitSetParameter(globalCPPlayer.reverbUnit, reverbParam, kAudioUnitScope_Global, 0, value, 0);
-}
-
+/*
 -(float)getReverbVauleForType:(int)reverbParam
 {
     float value;
     AudioUnitGetParameter(globalCPPlayer.reverbUnit, reverbParam, kAudioUnitScope_Global, 0, &value);
     return value;
 }
+*/
 
--(void)setDistrotion:(float)value
+-(void)setVauleForComponent:(NSString *)compenentId  parameter:(int)param value:(float)value
 {
+    if ([compenentId isEqualToString:@"rvb2"]) {
+        AudioUnitSetParameter(globalCPPlayer.reverbUnit, param, kAudioUnitScope_Global, 0, value, 0);
+    }else if([compenentId isEqualToString:@"lmtr"]){
+        AudioUnitSetParameter(globalCPPlayer.testUnit, param, kAudioUnitScope_Global, 0, value, 0);
+    }
 }
 
--(void)setDynamicProcess:(float)value parameter:(UInt32)parameterID
+-(float)getVauleForComponent:(NSString *)compenentId  parameter:(int)param
 {
-    NSLog(@"Dynamic ID :%i value:%f", parameterID, value);
-    AudioUnitSetParameter(globalCPPlayer.testUnit, parameterID, kAudioUnitScope_Global, 0, value, 0);
+     float value = 0.0;
+    if ([compenentId isEqualToString:@"rvb2"]) {
+        AudioUnitGetParameter(globalCPPlayer.reverbUnit, param, kAudioUnitScope_Global, 0, &value);
 
-}
-
--(void)removeTestNode
-{
-    AUGraphRemoveNode(globalCPPlayer.graph, testNode);
+    }else if([compenentId isEqualToString:@"lmtr"]){
+        AudioUnitGetParameter(globalCPPlayer.testUnit, param, kAudioUnitScope_Global, 0, &value);
+    }
+    return value;
 }
 
 #pragma mark Utility

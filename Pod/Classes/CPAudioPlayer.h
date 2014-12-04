@@ -81,11 +81,11 @@ typedef void (^_songPlayCompletionHandler)();
 -(float)getTreble;
 
 //Reverb
--(void)setReverbType:(int)reverbParam value:(float)value;
--(float)getReverbVauleForType:(int)reverbParam;
+//-(void)setReverbType:(int)reverbParam value:(float)value;
+//-(float)getReverbVauleForType:(int)reverbParam;
 
 //Testing
--(void)setDynamicProcess:(float)value parameter:(UInt32)parameterID;
--(void)removeTestNode;
-
+//-(void)setDynamicProcess:(float)value parameter:(UInt32)parameterID;
+-(void)setVauleForComponent:(NSString *)compenentId  parameter:(int)param value:(float)value;
+-(float)getVauleForComponent:(NSString *)compenentId  parameter:(int)param;
 @end
