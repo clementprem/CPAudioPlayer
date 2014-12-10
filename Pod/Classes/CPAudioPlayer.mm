@@ -54,10 +54,10 @@ void createAuGraph(CPPlayer *player) {
     AUNode eqNode = createAndAddNodeToGraphWithType(kAudioUnitType_Effect, kAudioUnitSubType_AUiPodEQ);
     AUNode bandEQNode = createAndAddNodeToGraphWithType(kAudioUnitType_Effect, kAudioUnitSubType_NBandEQ);
     AUNode bassBoostNode = createAndAddNodeToGraphWithType(kAudioUnitType_Effect, kAudioUnitSubType_LowShelfFilter);
-    AUNode trebleNode = createAndAddNodeToGraphWithType(kAudioUnitType_Effect, kAudioUnitSubType_LowShelfFilter);
+    AUNode trebleNode = createAndAddNodeToGraphWithType(kAudioUnitType_Effect, kAudioUnitSubType_HighShelfFilter);
     AUNode reverbNode = createAndAddNodeToGraphWithType(kAudioUnitType_Effect, kAudioUnitSubType_Reverb2);
     AUNode delayNode = createAndAddNodeToGraphWithType(kAudioUnitType_Effect, kAudioUnitSubType_Delay);
-    testNode = createAndAddNodeToGraphWithType(kAudioUnitType_Effect, kAudioUnitSubType_PeakLimiter);
+//    testNode = createAndAddNodeToGraphWithType(kAudioUnitType_Effect, kAudioUnitSubType_PeakLimiter);
     AUNode converterNode = createAndAddNodeToGraphWithType(kAudioUnitType_FormatConverter, kAudioUnitSubType_AUConverter);
     AUNode bassBoostConverterNode = createAndAddNodeToGraphWithType(kAudioUnitType_FormatConverter, kAudioUnitSubType_AUConverter);
     AUNode trebleConverterNode = createAndAddNodeToGraphWithType(kAudioUnitType_FormatConverter, kAudioUnitSubType_AUConverter);
@@ -70,7 +70,7 @@ void createAuGraph(CPPlayer *player) {
     configAudioUnitInNode(bandEQNode, &player->bandEQUnit);
     configAudioUnitInNode(reverbNode, &player->reverbUnit);
     configAudioUnitInNode(delayNode, &player->delayUnit);
-    configAudioUnitInNode(testNode, &player->testUnit);
+    //configAudioUnitInNode(testNode, &player->testUnit);
     configAudioUnitInNode(eqNode, &player->eqUnit);
     configAudioUnitInNode(bassBoostNode, &player->bassBoostUnit);
     configAudioUnitInNode(trebleNode, &player->treble);
@@ -93,8 +93,7 @@ void createAuGraph(CPPlayer *player) {
     mapNodeToGraph(trebleConverterNode, 0, trebleNode, 0);
     mapNodeToGraph(trebleNode, 0, reverbNode, 0);
     mapNodeToGraph(reverbNode, 0, delayNode, 0);
-    mapNodeToGraph(delayNode, 0, testNode, 0);
-    mapNodeToGraph(testNode, 0, outputNode, 0);
+    mapNodeToGraph(delayNode, 0, outputNode, 0);
     CheckError(AUGraphInitialize(player->graph), "Faile graph initilization");
 }
 
@@ -435,24 +434,26 @@ void resetGraph() {
                           0);
 }
 
+
+static float boostValues = 10;
 -(float)getBassBoost
 {
     float value;
     AudioUnitGetParameter(globalCPPlayer.bassBoostUnit, kAULowShelfParam_Gain, kAudioUnitScope_Global, 0, &value);
-    value = (value/12<0)?0:value/12;
+    value = (value/boostValues<0)?0:value/boostValues;
     return value;
 }
 
 - (void)setbassBoost:(float)value {
     
     AudioUnitSetParameter(globalCPPlayer.bassBoostUnit, kAULowShelfParam_CutoffFrequency, kAudioUnitScope_Global, 0, 120, 0);
-    float gain = (value < 0)?0:value*12;
+    float gain = (value < 0)?0:value*boostValues;
     AudioUnitSetParameter(globalCPPlayer.bassBoostUnit, kAULowShelfParam_Gain, kAudioUnitScope_Global, 0, gain, 0);
 }
 
 -(void)setTreble:(float)value
 {
-    float treble = (value < 0)?0:value*12;
+    float treble = (value < 0)?0:value*boostValues;
     AudioUnitSetParameter(globalCPPlayer.treble, kHighShelfParam_Gain, kAudioUnitScope_Global, 0, treble, 0);
 }
 
@@ -460,18 +461,9 @@ void resetGraph() {
 {
     float value;
     AudioUnitGetParameter(globalCPPlayer.treble, kHighShelfParam_Gain, kAudioUnitScope_Global, 0, &value);
-    value = (value/12<0)?0:value/12;
+    value = (value/boostValues<0)?0:value/boostValues;
     return value;
 }
-
-/*
--(float)getReverbVauleForType:(int)reverbParam
-{
-    float value;
-    AudioUnitGetParameter(globalCPPlayer.reverbUnit, reverbParam, kAudioUnitScope_Global, 0, &value);
-    return value;
-}
-*/
 
 -(void)setVauleForComponent:(NSString *)compenentId  parameter:(int)param value:(float)value
 {
