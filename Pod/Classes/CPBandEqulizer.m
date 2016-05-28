@@ -3,7 +3,7 @@
 //  
 //
 //  Created by Clement Prem on 9/18/14.
-//  Copyright (c) 2014 Hsenid. All rights reserved.
+//  Copyright (c) 2014. All rights reserved.
 //
 
 #import "CPBandEqulizer.h"
