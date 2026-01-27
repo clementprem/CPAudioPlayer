@@ -52,7 +52,7 @@ import SwiftUI
 #if canImport(SwiftUI)
 import SwiftUI
 
-@available(iOS 14.0, *)
+@available(iOS 16.0, *)
 struct SwiftUIExampleView: View {
     @StateObject private var player = AudioPlayer()
     @State private var showingFilePicker = false
@@ -122,7 +122,7 @@ struct SwiftUIExampleView: View {
 
 // MARK: - Minimal Example
 
-@available(iOS 14.0, *)
+@available(iOS 16.0, *)
 struct MinimalExampleView: View {
     @StateObject private var player = AudioPlayer()
 
@@ -143,7 +143,7 @@ struct MinimalExampleView: View {
 
 // MARK: - Programmatic Control Example
 
-@available(iOS 14.0, *)
+@available(iOS 16.0, *)
 struct ProgrammaticExampleView: View {
     @StateObject private var player = AudioPlayer()
 
@@ -188,7 +188,7 @@ struct ProgrammaticExampleView: View {
 // MARK: - Preview Provider
 
 #if DEBUG
-@available(iOS 14.0, *)
+@available(iOS 16.0, *)
 struct SwiftUIExampleView_Previews: PreviewProvider {
     static var previews: some View {
         Group {

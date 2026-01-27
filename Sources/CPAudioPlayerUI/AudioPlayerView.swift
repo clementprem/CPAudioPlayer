@@ -9,7 +9,7 @@ import SwiftUI
 
 // MARK: - Main Audio Player View
 
-@available(iOS 14.0, *)
+@available(iOS 16.0, *)
 public struct AudioPlayerView: View {
 
     @ObservedObject var player: AudioPlayer
@@ -94,7 +94,7 @@ public struct AudioPlayerView: View {
 
 // MARK: - Track Info Section
 
-@available(iOS 14.0, *)
+@available(iOS 16.0, *)
 struct TrackInfoSection: View {
     let title: String
     let artist: String
@@ -118,7 +118,7 @@ struct TrackInfoSection: View {
 
 // MARK: - Transport Section
 
-@available(iOS 14.0, *)
+@available(iOS 16.0, *)
 struct TransportSection: View {
     @ObservedObject var player: AudioPlayer
     let accentColor: Color
@@ -190,7 +190,7 @@ struct TransportSection: View {
 
 // MARK: - Equalizer Section
 
-@available(iOS 14.0, *)
+@available(iOS 16.0, *)
 struct EqualizerSection: View {
     @ObservedObject var player: AudioPlayer
     let accentColor: Color
@@ -249,7 +249,7 @@ struct EqualizerSection: View {
 
 // MARK: - EQ Band Slider
 
-@available(iOS 14.0, *)
+@available(iOS 16.0, *)
 struct EQBandSlider: View {
     @Binding var value: Float
     let frequency: Float
@@ -346,7 +346,7 @@ struct EQBandSlider: View {
 
 // MARK: - Effects Section
 
-@available(iOS 14.0, *)
+@available(iOS 16.0, *)
 struct EffectsSection: View {
     @ObservedObject var player: AudioPlayer
     let accentColor: Color
@@ -408,7 +408,7 @@ struct EffectsSection: View {
 
 // MARK: - Effect Slider
 
-@available(iOS 14.0, *)
+@available(iOS 16.0, *)
 struct EffectSlider: View {
     let label: String
     @Binding var value: Float
@@ -439,7 +439,7 @@ struct EffectSlider: View {
 
 // MARK: - Preset Picker View
 
-@available(iOS 14.0, *)
+@available(iOS 16.0, *)
 struct PresetPickerView: View {
     @ObservedObject var player: AudioPlayer
     let accentColor: Color
@@ -478,7 +478,7 @@ struct PresetPickerView: View {
 
 // MARK: - Compact Audio Player View
 
-@available(iOS 14.0, *)
+@available(iOS 16.0, *)
 public struct CompactAudioPlayerView: View {
     @ObservedObject var player: AudioPlayer
     var accentColor: Color
@@ -554,7 +554,7 @@ public struct CompactAudioPlayerView: View {
 // MARK: - Preview Provider
 
 #if DEBUG
-@available(iOS 14.0, *)
+@available(iOS 16.0, *)
 struct AudioPlayerView_Previews: PreviewProvider {
     static var previews: some View {
         let player = AudioPlayer()
