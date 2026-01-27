@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import UniformTypeIdentifiers
 import CPAudioPlayer
 
 /// Swift wrapper for CPAudioPlayer providing a modern Swift interface
@@ -20,6 +21,10 @@ public class AudioPlayer: NSObject, ObservableObject {
     @Published public private(set) var duration: Double = 0
     @Published public private(set) var trackTitle: String = ""
     @Published public private(set) var artistName: String = ""
+    @Published public private(set) var currentFileURL: URL?
+
+    /// Error message when file import fails
+    @Published public var importError: String?
 
     // EQ bands
     @Published public var eqBands: [Float] = Array(repeating: 0, count: 7)
@@ -56,6 +61,15 @@ public class AudioPlayer: NSObject, ObservableObject {
 
     /// Default EQ frequencies in Hz
     public static let defaultFrequencies: [Float] = [60, 150, 400, 1100, 3100, 8000, 16000]
+
+    /// Supported audio file types for import
+    public static let supportedTypes: [UTType] = [
+        .mp3,
+        .mpeg4Audio,
+        .wav,
+        .aiff,
+        .audio
+    ]
 
     /// Available EQ presets
     public static let presets: [String: [Float]] = [
@@ -99,12 +113,128 @@ public class AudioPlayer: NSObject, ObservableObject {
 
         if !isError.boolValue {
             duration = player?.playBackduration ?? 0
-            trackTitle = title ?? url.lastPathComponent
+            trackTitle = title ?? url.deletingPathExtension().lastPathComponent
             artistName = artist ?? ""
+            currentFileURL = url
+            importError = nil
             syncFromPlayer()
             return true
         }
         return false
+    }
+
+    // MARK: - File Import
+
+    /// Import an audio file from a security-scoped URL (e.g., from Files app)
+    /// - Parameter url: The security-scoped URL from document picker
+    /// - Returns: True if import was successful
+    @discardableResult
+    public func importFile(from url: URL) -> Bool {
+        // Stop any current playback
+        stop()
+        importError = nil
+
+        // Start accessing security-scoped resource
+        guard url.startAccessingSecurityScopedResource() else {
+            importError = "Cannot access the selected file"
+            return false
+        }
+
+        defer {
+            url.stopAccessingSecurityScopedResource()
+        }
+
+        // Copy file to app's documents directory for persistent access
+        do {
+            let localURL = try copyToDocuments(url: url)
+            return load(url: localURL)
+        } catch {
+            importError = "Failed to import file: \(error.localizedDescription)"
+            return false
+        }
+    }
+
+    /// Copy a file to the app's documents directory
+    /// - Parameter url: Source URL
+    /// - Returns: URL of the copied file
+    private func copyToDocuments(url: URL) throws -> URL {
+        let fileManager = FileManager.default
+        let documentsURL = try fileManager.url(
+            for: .documentDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+
+        let audioDirectory = documentsURL.appendingPathComponent("ImportedAudio", isDirectory: true)
+
+        // Create audio directory if needed
+        if !fileManager.fileExists(atPath: audioDirectory.path) {
+            try fileManager.createDirectory(at: audioDirectory, withIntermediateDirectories: true)
+        }
+
+        let destinationURL = audioDirectory.appendingPathComponent(url.lastPathComponent)
+
+        // Remove existing file if present
+        if fileManager.fileExists(atPath: destinationURL.path) {
+            try fileManager.removeItem(at: destinationURL)
+        }
+
+        // Copy the file
+        try fileManager.copyItem(at: url, to: destinationURL)
+
+        return destinationURL
+    }
+
+    /// Get list of previously imported audio files
+    public func getImportedFiles() -> [URL] {
+        let fileManager = FileManager.default
+        guard let documentsURL = try? fileManager.url(
+            for: .documentDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: false
+        ) else {
+            return []
+        }
+
+        let audioDirectory = documentsURL.appendingPathComponent("ImportedAudio", isDirectory: true)
+
+        guard let contents = try? fileManager.contentsOfDirectory(
+            at: audioDirectory,
+            includingPropertiesForKeys: [.creationDateKey],
+            options: .skipsHiddenFiles
+        ) else {
+            return []
+        }
+
+        // Filter for audio files and sort by creation date (newest first)
+        return contents
+            .filter { url in
+                let ext = url.pathExtension.lowercased()
+                return ["mp3", "m4a", "wav", "aiff", "aac", "caf"].contains(ext)
+            }
+            .sorted { url1, url2 in
+                let date1 = (try? url1.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? Date.distantPast
+                let date2 = (try? url2.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? Date.distantPast
+                return date1 > date2
+            }
+    }
+
+    /// Delete an imported file
+    /// - Parameter url: URL of the file to delete
+    public func deleteImportedFile(at url: URL) throws {
+        let fileManager = FileManager.default
+        try fileManager.removeItem(at: url)
+
+        // If this was the current file, clear it
+        if currentFileURL == url {
+            stop()
+            trackTitle = ""
+            artistName = ""
+            duration = 0
+            currentFileURL = nil
+        }
     }
 
     // MARK: - Playback Control

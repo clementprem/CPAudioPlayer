@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Main Audio Player View
 
@@ -21,9 +22,13 @@ public struct AudioPlayerView: View {
     public var showsEqualizer: Bool
     public var showsEffects: Bool
     public var showsPresets: Bool
+    public var showsFileImport: Bool
     public var compactMode: Bool
 
     @State private var showingPresetPicker = false
+    @State private var showingFilePicker = false
+    @State private var showingLibrary = false
+    @State private var showingErrorAlert = false
 
     public init(
         player: AudioPlayer,
@@ -33,6 +38,7 @@ public struct AudioPlayerView: View {
         showsEqualizer: Bool = true,
         showsEffects: Bool = true,
         showsPresets: Bool = true,
+        showsFileImport: Bool = true,
         compactMode: Bool = false
     ) {
         self.player = player
@@ -42,16 +48,20 @@ public struct AudioPlayerView: View {
         self.showsEqualizer = showsEqualizer
         self.showsEffects = showsEffects
         self.showsPresets = showsPresets
+        self.showsFileImport = showsFileImport
         self.compactMode = compactMode
     }
 
     public var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Track Info
+                // Track Info with Import Button
                 TrackInfoSection(
-                    title: player.trackTitle,
-                    artist: player.artistName
+                    player: player,
+                    accentColor: accentColor,
+                    showsFileImport: showsFileImport,
+                    showingFilePicker: $showingFilePicker,
+                    showingLibrary: $showingLibrary
                 )
 
                 // Transport Controls
@@ -89,6 +99,33 @@ public struct AudioPlayerView: View {
         .sheet(isPresented: $showingPresetPicker) {
             PresetPickerView(player: player, accentColor: accentColor)
         }
+        .sheet(isPresented: $showingLibrary) {
+            LibraryView(player: player, accentColor: accentColor)
+        }
+        .fileImporter(
+            isPresented: $showingFilePicker,
+            allowedContentTypes: AudioPlayer.supportedTypes,
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    if !player.importFile(from: url) {
+                        showingErrorAlert = true
+                    }
+                }
+            case .failure(let error):
+                player.importError = error.localizedDescription
+                showingErrorAlert = true
+            }
+        }
+        .alert("Import Error", isPresented: $showingErrorAlert) {
+            Button("OK", role: .cancel) {
+                player.importError = nil
+            }
+        } message: {
+            Text(player.importError ?? "Unknown error occurred")
+        }
     }
 }
 
@@ -96,21 +133,46 @@ public struct AudioPlayerView: View {
 
 @available(iOS 16.0, *)
 struct TrackInfoSection: View {
-    let title: String
-    let artist: String
+    @ObservedObject var player: AudioPlayer
+    let accentColor: Color
+    let showsFileImport: Bool
+    @Binding var showingFilePicker: Bool
+    @Binding var showingLibrary: Bool
 
     var body: some View {
-        VStack(spacing: 4) {
-            Text(title.isEmpty ? "No Track Selected" : title)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
-                .lineLimit(1)
-
-            if !artist.isEmpty {
-                Text(artist)
-                    .font(.system(size: 14))
-                    .foregroundColor(.gray)
+        VStack(spacing: 12) {
+            // Track info
+            VStack(spacing: 4) {
+                Text(player.trackTitle.isEmpty ? "No Track Selected" : player.trackTitle)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
                     .lineLimit(1)
+
+                if !player.artistName.isEmpty {
+                    Text(player.artistName)
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                        .lineLimit(1)
+                }
+            }
+
+            // Import buttons
+            if showsFileImport {
+                HStack(spacing: 16) {
+                    Button(action: { showingFilePicker = true }) {
+                        Label("Add from Files", systemImage: "folder")
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(accentColor)
+
+                    Button(action: { showingLibrary = true }) {
+                        Label("Library", systemImage: "music.note.list")
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.gray)
+                }
             }
         }
     }
@@ -470,6 +532,110 @@ struct PresetPickerView: View {
                         presentationMode.wrappedValue.dismiss()
                     }
                     .foregroundColor(accentColor)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Library View
+
+@available(iOS 16.0, *)
+struct LibraryView: View {
+    @ObservedObject var player: AudioPlayer
+    let accentColor: Color
+    @Environment(\.dismiss) var dismiss
+
+    @State private var importedFiles: [URL] = []
+    @State private var showingDeleteConfirmation = false
+    @State private var fileToDelete: URL?
+
+    var body: some View {
+        NavigationView {
+            Group {
+                if importedFiles.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "music.note")
+                            .font(.system(size: 48))
+                            .foregroundColor(.gray)
+                        Text("No imported songs")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                        Text("Add songs from the Files app")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(importedFiles, id: \.absoluteString) { url in
+                            Button(action: {
+                                player.load(url: url)
+                                dismiss()
+                            }) {
+                                HStack {
+                                    Image(systemName: "music.note")
+                                        .foregroundColor(accentColor)
+                                        .frame(width: 32)
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(url.deletingPathExtension().lastPathComponent)
+                                            .foregroundColor(.primary)
+                                            .lineLimit(1)
+
+                                        Text(url.pathExtension.uppercased())
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+
+                                    Spacer()
+
+                                    if player.currentFileURL == url {
+                                        Image(systemName: "speaker.wave.2.fill")
+                                            .foregroundColor(accentColor)
+                                    }
+                                }
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    fileToDelete = url
+                                    showingDeleteConfirmation = true
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Library")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(accentColor)
+                }
+            }
+            .onAppear {
+                importedFiles = player.getImportedFiles()
+            }
+            .confirmationDialog(
+                "Delete this song?",
+                isPresented: $showingDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    if let url = fileToDelete {
+                        try? player.deleteImportedFile(at: url)
+                        importedFiles = player.getImportedFiles()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                if let url = fileToDelete {
+                    Text("'\(url.deletingPathExtension().lastPathComponent)' will be removed from your library.")
                 }
             }
         }
