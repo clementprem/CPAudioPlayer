@@ -9,6 +9,24 @@ import Foundation
 import Combine
 import UniformTypeIdentifiers
 import CPAudioPlayer
+import AVFoundation
+
+// MARK: - Repeat Mode
+
+/// Repeat mode options for playback
+public enum RepeatMode: String, CaseIterable {
+    case off = "Off"
+    case one = "Repeat One"
+    case all = "Repeat All"
+
+    public var iconName: String {
+        switch self {
+        case .off: return "repeat"
+        case .one: return "repeat.1"
+        case .all: return "repeat"
+        }
+    }
+}
 
 /// Swift wrapper for CPAudioPlayer providing a modern Swift interface
 @objcMembers
@@ -54,10 +72,43 @@ public class AudioPlayer: NSObject, ObservableObject {
         }
     }
 
+    // MARK: - Sleep Timer
+
+    /// Whether sleep timer is active
+    @Published public private(set) var sleepTimerActive: Bool = false
+
+    /// Remaining time on sleep timer in seconds
+    @Published public private(set) var sleepTimerRemaining: TimeInterval = 0
+
+    /// Total sleep timer duration that was set
+    @Published public private(set) var sleepTimerDuration: TimeInterval = 0
+
+    // MARK: - Repeat Mode
+
+    /// Repeat mode for playback
+    @Published public var repeatMode: RepeatMode = .off
+
+    // MARK: - Audio Info
+
+    /// Current audio file format (e.g., "MP3", "AAC")
+    @Published public private(set) var audioFormat: String = ""
+
+    /// Audio file size in bytes
+    @Published public private(set) var fileSize: Int64 = 0
+
+    // MARK: - Custom Presets
+
+    /// User's custom saved presets
+    @Published public private(set) var customPresets: [String: [Float]] = [:]
+
     // MARK: - Private Properties
 
     private var player: CPAudioPlayer?
     private var playbackTimer: Timer?
+    private var sleepTimer: Timer?
+    private var fadeTimer: Timer?
+    private var originalVolume: Float = 1.0
+    private static let customPresetsKey = "CPAudioPlayer.customPresets"
 
     /// Default EQ frequencies in Hz
     public static let defaultFrequencies: [Float] = [60, 150, 400, 1100, 3100, 8000, 16000]
@@ -92,10 +143,12 @@ public class AudioPlayer: NSObject, ObservableObject {
     public override init() {
         super.init()
         player = CPAudioPlayer()
+        loadCustomPresets()
     }
 
     deinit {
         stopPlaybackTimer()
+        cancelSleepTimer()
     }
 
     // MARK: - Audio File Loading
@@ -118,6 +171,7 @@ public class AudioPlayer: NSObject, ObservableObject {
             currentFileURL = url
             importError = nil
             syncFromPlayer()
+            extractAudioInfo(from: url)
             return true
         }
         return false
@@ -358,8 +412,22 @@ public class AudioPlayer: NSObject, ObservableObject {
             self.currentTime = player.currentPlaybackTime
 
             if self.currentTime >= self.duration && self.duration > 0 {
-                self.stop()
+                self.handleTrackEnd()
             }
+        }
+    }
+
+    private func handleTrackEnd() {
+        switch repeatMode {
+        case .off:
+            stop()
+        case .one:
+            seek(to: 0)
+            play()
+        case .all:
+            // In single track mode, repeat all behaves like repeat one
+            seek(to: 0)
+            play()
         }
     }
 
@@ -372,6 +440,166 @@ public class AudioPlayer: NSObject, ObservableObject {
     /// - Parameter completion: Handler called when playback completes
     public func onCompletion(_ completion: @escaping () -> Void) {
         player?.handleSongPlayingCompletion(completion)
+    }
+
+    // MARK: - Sleep Timer
+
+    /// Start the sleep timer with optional fade out
+    /// - Parameters:
+    ///   - duration: Time in seconds until playback stops
+    ///   - fadeOut: Whether to gradually fade volume before stopping (last 30 seconds)
+    public func startSleepTimer(duration: TimeInterval, fadeOut: Bool = true) {
+        cancelSleepTimer()
+
+        sleepTimerDuration = duration
+        sleepTimerRemaining = duration
+        sleepTimerActive = true
+        originalVolume = player?.getVolume() ?? 1.0
+
+        // Update remaining time every second
+        sleepTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            self.sleepTimerRemaining -= 1
+
+            // Start fade out in last 30 seconds
+            if fadeOut && self.sleepTimerRemaining <= 30 && self.sleepTimerRemaining > 0 {
+                let fadeProgress = Float(self.sleepTimerRemaining) / 30.0
+                self.player?.setVolume(self.originalVolume * fadeProgress)
+            }
+
+            if self.sleepTimerRemaining <= 0 {
+                self.executeSleepTimerEnd()
+            }
+        }
+    }
+
+    /// Cancel the sleep timer
+    public func cancelSleepTimer() {
+        sleepTimer?.invalidate()
+        sleepTimer = nil
+        fadeTimer?.invalidate()
+        fadeTimer = nil
+        sleepTimerActive = false
+        sleepTimerRemaining = 0
+        sleepTimerDuration = 0
+
+        // Restore original volume
+        if originalVolume > 0 {
+            player?.setVolume(originalVolume)
+        }
+    }
+
+    /// Formatted sleep timer remaining string (m:ss)
+    public var sleepTimerRemainingFormatted: String {
+        let mins = Int(sleepTimerRemaining) / 60
+        let secs = Int(sleepTimerRemaining) % 60
+        return String(format: "%d:%02d", mins, secs)
+    }
+
+    private func executeSleepTimerEnd() {
+        pause()
+        cancelSleepTimer()
+        player?.setVolume(originalVolume)
+    }
+
+    // MARK: - Custom Presets
+
+    /// Save current EQ settings as a custom preset
+    /// - Parameter name: Name for the preset
+    public func saveCustomPreset(name: String) {
+        var presets = customPresets
+        presets[name] = eqBands
+        customPresets = presets
+        persistCustomPresets()
+    }
+
+    /// Delete a custom preset
+    /// - Parameter name: Name of the preset to delete
+    public func deleteCustomPreset(name: String) {
+        var presets = customPresets
+        presets.removeValue(forKey: name)
+        customPresets = presets
+        persistCustomPresets()
+    }
+
+    /// Apply a custom preset by name
+    /// - Parameter name: Name of the custom preset
+    /// - Returns: True if preset was found and applied
+    @discardableResult
+    public func applyCustomPreset(_ name: String) -> Bool {
+        guard let values = customPresets[name] else { return false }
+        setEQBands(values)
+        return true
+    }
+
+    /// Get all presets (built-in + custom)
+    public var allPresets: [String: [Float]] {
+        var all = Self.presets
+        for (name, values) in customPresets {
+            all[name] = values
+        }
+        return all
+    }
+
+    private func loadCustomPresets() {
+        if let data = UserDefaults.standard.data(forKey: Self.customPresetsKey),
+           let presets = try? JSONDecoder().decode([String: [Float]].self, from: data) {
+            customPresets = presets
+        }
+    }
+
+    private func persistCustomPresets() {
+        if let data = try? JSONEncoder().encode(customPresets) {
+            UserDefaults.standard.set(data, forKey: Self.customPresetsKey)
+        }
+    }
+
+    // MARK: - Audio Info
+
+    private func extractAudioInfo(from url: URL) {
+        // Get file size
+        if let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+           let size = attributes[.size] as? Int64 {
+            fileSize = size
+        } else {
+            fileSize = 0
+        }
+
+        // Get audio format from file extension and AVAsset
+        let ext = url.pathExtension.uppercased()
+        audioFormat = ext
+
+        // Try to get more detailed format info from AVAsset
+        let asset = AVAsset(url: url)
+        if let track = asset.tracks(withMediaType: .audio).first {
+            let formatDescriptions = track.formatDescriptions as? [CMFormatDescription]
+            if let formatDesc = formatDescriptions?.first {
+                let audioStreamBasicDescription = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc)
+                if let asbd = audioStreamBasicDescription?.pointee {
+                    let sampleRate = Int(asbd.mSampleRate)
+                    let channels = asbd.mChannelsPerFrame
+                    audioFormat = "\(ext) • \(sampleRate / 1000)kHz • \(channels == 1 ? "Mono" : "Stereo")"
+                }
+            }
+        }
+    }
+
+    /// Formatted file size string (e.g., "3.5 MB")
+    public var fileSizeFormatted: String {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: fileSize)
+    }
+
+    /// Bitrate in kbps (approximate)
+    public var bitrate: Int {
+        guard duration > 0 && fileSize > 0 else { return 0 }
+        return Int((Double(fileSize) * 8) / duration / 1000)
+    }
+
+    /// Formatted bitrate string (e.g., "320 kbps")
+    public var bitrateFormatted: String {
+        "\(bitrate) kbps"
     }
 }
 

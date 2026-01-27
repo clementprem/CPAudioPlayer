@@ -154,6 +154,23 @@ struct TrackInfoSection: View {
                         .foregroundColor(.gray)
                         .lineLimit(1)
                 }
+
+                // Audio info
+                if !player.audioFormat.isEmpty {
+                    HStack(spacing: 8) {
+                        Text(player.audioFormat)
+                        if player.bitrate > 0 {
+                            Text("•")
+                            Text(player.bitrateFormatted)
+                        }
+                        if player.fileSize > 0 {
+                            Text("•")
+                            Text(player.fileSizeFormatted)
+                        }
+                    }
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(white: 0.5))
+                }
             }
 
             // Import buttons
@@ -188,6 +205,7 @@ struct TransportSection: View {
 
     @State private var isSeeking = false
     @State private var seekValue: Double = 0
+    @State private var showingSleepTimer = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -227,7 +245,31 @@ struct TransportSection: View {
             }
 
             // Play/Pause/Stop Buttons
-            HStack(spacing: 32) {
+            HStack(spacing: 24) {
+                // Repeat mode button
+                Button(action: {
+                    switch player.repeatMode {
+                    case .off:
+                        player.repeatMode = .one
+                    case .one:
+                        player.repeatMode = .all
+                    case .all:
+                        player.repeatMode = .off
+                    }
+                }) {
+                    Image(systemName: player.repeatMode.iconName)
+                        .font(.system(size: 20))
+                        .foregroundColor(player.repeatMode == .off ? .gray : accentColor)
+                        .overlay(
+                            player.repeatMode == .all ?
+                            Circle()
+                                .fill(accentColor)
+                                .frame(width: 6, height: 6)
+                                .offset(x: 8, y: -8) : nil
+                        )
+                }
+                .frame(width: 44, height: 44)
+
                 Button(action: { player.stop() }) {
                     Image(systemName: "stop.fill")
                         .font(.system(size: 24))
@@ -242,10 +284,26 @@ struct TransportSection: View {
                 }
                 .frame(width: 54, height: 54)
 
-                // Placeholder for symmetry
-                Color.clear
-                    .frame(width: 44, height: 44)
+                // Sleep timer button
+                Button(action: { showingSleepTimer = true }) {
+                    ZStack {
+                        Image(systemName: "moon.zzz")
+                            .font(.system(size: 20))
+                            .foregroundColor(player.sleepTimerActive ? accentColor : .gray)
+
+                        if player.sleepTimerActive {
+                            Text(player.sleepTimerRemainingFormatted)
+                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                .foregroundColor(accentColor)
+                                .offset(y: 16)
+                        }
+                    }
+                }
+                .frame(width: 44, height: 44)
             }
+        }
+        .sheet(isPresented: $showingSleepTimer) {
+            SleepTimerView(player: player, accentColor: accentColor)
         }
     }
 }
@@ -507,20 +565,69 @@ struct PresetPickerView: View {
     let accentColor: Color
     @Environment(\.presentationMode) var presentationMode
 
-    private var presetNames: [String] {
+    @State private var showingSavePreset = false
+    @State private var newPresetName = ""
+    @State private var presetToDelete: String?
+    @State private var showingDeleteConfirmation = false
+
+    private var builtInPresetNames: [String] {
         AudioPlayer.presets.keys.sorted()
+    }
+
+    private var customPresetNames: [String] {
+        player.customPresets.keys.sorted()
     }
 
     var body: some View {
         NavigationView {
             List {
-                ForEach(presetNames, id: \.self) { preset in
-                    Button(action: {
-                        player.applyPreset(preset)
-                        presentationMode.wrappedValue.dismiss()
-                    }) {
-                        Text(preset)
-                            .foregroundColor(.primary)
+                // Built-in presets
+                Section("Built-in Presets") {
+                    ForEach(builtInPresetNames, id: \.self) { preset in
+                        Button(action: {
+                            player.applyPreset(preset)
+                            presentationMode.wrappedValue.dismiss()
+                        }) {
+                            Text(preset)
+                                .foregroundColor(.primary)
+                        }
+                    }
+                }
+
+                // Custom presets
+                if !customPresetNames.isEmpty {
+                    Section("My Presets") {
+                        ForEach(customPresetNames, id: \.self) { preset in
+                            Button(action: {
+                                player.applyCustomPreset(preset)
+                                presentationMode.wrappedValue.dismiss()
+                            }) {
+                                HStack {
+                                    Text(preset)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(accentColor)
+                                }
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    presetToDelete = preset
+                                    showingDeleteConfirmation = true
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Save current as preset
+                Section {
+                    Button(action: { showingSavePreset = true }) {
+                        Label("Save Current as Preset", systemImage: "plus.circle")
+                            .foregroundColor(accentColor)
                     }
                 }
             }
@@ -530,6 +637,128 @@ struct PresetPickerView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         presentationMode.wrappedValue.dismiss()
+                    }
+                    .foregroundColor(accentColor)
+                }
+            }
+            .alert("Save Preset", isPresented: $showingSavePreset) {
+                TextField("Preset Name", text: $newPresetName)
+                Button("Cancel", role: .cancel) {
+                    newPresetName = ""
+                }
+                Button("Save") {
+                    if !newPresetName.isEmpty {
+                        player.saveCustomPreset(name: newPresetName)
+                        newPresetName = ""
+                    }
+                }
+            } message: {
+                Text("Enter a name for your custom preset")
+            }
+            .confirmationDialog(
+                "Delete Preset?",
+                isPresented: $showingDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    if let name = presetToDelete {
+                        player.deleteCustomPreset(name: name)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                if let name = presetToDelete {
+                    Text("'\(name)' will be permanently deleted.")
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Sleep Timer View
+
+@available(iOS 16.0, *)
+struct SleepTimerView: View {
+    @ObservedObject var player: AudioPlayer
+    let accentColor: Color
+    @Environment(\.dismiss) var dismiss
+
+    private let timerOptions: [(String, TimeInterval)] = [
+        ("5 minutes", 5 * 60),
+        ("10 minutes", 10 * 60),
+        ("15 minutes", 15 * 60),
+        ("30 minutes", 30 * 60),
+        ("45 minutes", 45 * 60),
+        ("1 hour", 60 * 60),
+        ("1.5 hours", 90 * 60),
+        ("2 hours", 120 * 60)
+    ]
+
+    var body: some View {
+        NavigationView {
+            List {
+                if player.sleepTimerActive {
+                    Section {
+                        VStack(spacing: 12) {
+                            Text("Sleep Timer Active")
+                                .font(.headline)
+                                .foregroundColor(accentColor)
+
+                            Text(player.sleepTimerRemainingFormatted)
+                                .font(.system(size: 48, weight: .light, design: .monospaced))
+                                .foregroundColor(.primary)
+
+                            Text("Music will fade out and stop")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            Button(action: {
+                                player.cancelSleepTimer()
+                            }) {
+                                Text("Cancel Timer")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(Color.red)
+                                    .cornerRadius(10)
+                            }
+                            .padding(.top, 8)
+                        }
+                        .padding(.vertical, 16)
+                        .frame(maxWidth: .infinity)
+                    }
+                } else {
+                    Section("Set Sleep Timer") {
+                        ForEach(timerOptions, id: \.1) { option in
+                            Button(action: {
+                                player.startSleepTimer(duration: option.1)
+                                dismiss()
+                            }) {
+                                HStack {
+                                    Image(systemName: "moon.zzz")
+                                        .foregroundColor(accentColor)
+                                        .frame(width: 24)
+                                    Text(option.0)
+                                        .foregroundColor(.primary)
+                                }
+                            }
+                        }
+                    }
+
+                    Section {
+                        Text("The music will gradually fade out during the last 30 seconds before stopping.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Sleep Timer")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
                     }
                     .foregroundColor(accentColor)
                 }

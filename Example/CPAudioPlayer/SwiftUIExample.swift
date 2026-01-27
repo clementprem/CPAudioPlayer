@@ -171,12 +171,36 @@ struct ProgrammaticExampleView: View {
                 Text("Treble: \(player.treble, specifier: "%.1f")")
                 Text("Reverb: \(Int(player.reverb * 100))%")
                 Text("EQ: \(player.eqBands.map { String(format: "%.0f", $0) }.joined(separator: ", "))")
+                Text("Repeat: \(player.repeatMode.rawValue)")
+                if player.sleepTimerActive {
+                    Text("Sleep: \(player.sleepTimerRemainingFormatted)")
+                }
             }
             .font(.system(.body, design: .monospaced))
             .foregroundColor(.white)
             .padding()
             .background(Color(white: 0.15))
             .cornerRadius(8)
+
+            // Feature controls
+            HStack(spacing: 16) {
+                Button("Sleep 5m") {
+                    player.startSleepTimer(duration: 5 * 60)
+                }
+
+                Button("Save Preset") {
+                    player.saveCustomPreset(name: "My Custom")
+                }
+
+                Button("Repeat") {
+                    switch player.repeatMode {
+                    case .off: player.repeatMode = .one
+                    case .one: player.repeatMode = .all
+                    case .all: player.repeatMode = .off
+                    }
+                }
+            }
+            .buttonStyle(.bordered)
 
             AudioPlayerView(player: player)
         }
