@@ -1,0 +1,8 @@
+module CPAudioPlayer {
+    umbrella header "CPAudioPlayer.h"
+    header "CPBandEqulizer.h"
+    header "CPReverbEngine.h"
+
+    export *
+    module * { export * }
+}

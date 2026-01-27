@@ -1,38 +1,35 @@
-#
-# Be sure to run `pod lib lint CPAudioPlayer.podspec' to ensure this is a
-# valid spec and remove all comments before submitting the spec.
-#
-# Any lines starting with a # are optional, but encouraged
-#
-# To learn more about a Podspec see http://guides.cocoapods.org/syntax/podspec.html
-#
-
 Pod::Spec.new do |s|
   s.name             = "CPAudioPlayer"
-  s.version          = "0.1.0"
-  s.summary          = "An audio player with simple interface to effects using audio units"
+  s.version          = "1.0.0"
+  s.summary          = "A modern audio player with 7-band EQ, effects, and SwiftUI support"
   s.description      = <<-DESC
-                      CPAudioPlayer allow you to work with audio units using a simple and intuitive interface.
+                      CPAudioPlayer is a powerful audio player library built on Apple's Audio Units framework.
 
-                       * Markdown format.
-                       * Don't worry about the indent, we strip it!
-                       DESC
+                      Features:
+                      * 7-band parametric equalizer
+                      * iPod-style EQ presets
+                      * Bass boost, treble, reverb, and delay effects
+                      * Channel balance (pan) control
+                      * Modern SwiftUI view with customizable appearance
+                      * UIKit view for compatibility
+                      * Swift wrapper for easy integration
+                      DESC
   s.homepage         = "https://github.com/clementprem/CPAudioPlayer"
-  # s.screenshots     = "www.example.com/screenshots_1", "www.example.com/screenshots_2"
   s.license          = 'MIT'
   s.author           = { "Clement Prem" => "clementprem@gmail.com" }
   s.source           = { :git => "https://github.com/clementprem/CPAudioPlayer.git", :tag => s.version.to_s }
-  # s.social_media_url = 'https://twitter.com/clement_prem'
+  s.swift_version    = '5.0'
 
-  s.platform     = :ios, '7.0'
+  s.platform     = :ios, '14.0'
   s.requires_arc = true
 
-  s.source_files = 'Pod/Classes'
+  # Source files - Objective-C and Swift
+  s.source_files = 'Pod/Classes/**/*.{h,m,mm}', 'Pod/Classes/Swift/**/*.swift'
+
+  s.public_header_files = 'Pod/Classes/*.h'
+  s.frameworks = 'UIKit', 'AudioToolbox', 'AVFoundation'
+
   s.resource_bundles = {
     'CPAudioPlayer' => ['Pod/Assets/*.png']
   }
-
-  # s.public_header_files = 'Pod/Classes/**/*.h'
-  # s.frameworks = 'UIKit', 'MapKit'
-  # s.dependency 'AFNetworking', '~> 2.3'
 end
