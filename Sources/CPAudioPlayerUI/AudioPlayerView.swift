@@ -775,64 +775,98 @@ struct LibraryView: View {
     let accentColor: Color
     @Environment(\.dismiss) var dismiss
 
-    @State private var importedFiles: [URL] = []
+    @State private var searchText = ""
+    @State private var sortOption: LibraryManager.SortOption = .dateAdded
+    @State private var sortAscending = false
+    @State private var showingFilePicker = false
     @State private var showingDeleteConfirmation = false
-    @State private var fileToDelete: URL?
+    @State private var songToDelete: SongMetadata?
+    @State private var songToEdit: SongMetadata?
+    @State private var showingEditSheet = false
+    @State private var showingSortMenu = false
+    @State private var selectedSongs: Set<UUID> = []
+    @State private var isSelectionMode = false
+    @State private var showingBatchDeleteConfirmation = false
+
+    private var songs: [SongMetadata] {
+        let sorted = player.libraryManager.getSortedSongs(by: sortOption, ascending: sortAscending)
+        if searchText.isEmpty {
+            return sorted
+        }
+        return player.libraryManager.searchSongs(query: searchText)
+    }
 
     var body: some View {
         NavigationView {
             Group {
-                if importedFiles.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "music.note")
-                            .font(.system(size: 48))
-                            .foregroundColor(.gray)
-                        Text("No imported songs")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                        Text("Add songs from the Files app")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if player.libraryManager.songs.isEmpty {
+                    EmptyLibraryView(
+                        accentColor: accentColor,
+                        showingFilePicker: $showingFilePicker
+                    )
                 } else {
-                    List {
-                        ForEach(importedFiles, id: \.absoluteString) { url in
-                            Button(action: {
-                                player.load(url: url)
-                                dismiss()
-                            }) {
-                                HStack {
-                                    Image(systemName: "music.note")
-                                        .foregroundColor(accentColor)
-                                        .frame(width: 32)
+                    VStack(spacing: 0) {
+                        // Library stats header
+                        LibraryStatsHeader(
+                            songCount: player.libraryManager.songCount,
+                            totalDuration: player.libraryManager.totalDurationFormatted,
+                            totalSize: player.libraryManager.totalFileSizeFormatted,
+                            accentColor: accentColor
+                        )
 
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(url.deletingPathExtension().lastPathComponent)
-                                            .foregroundColor(.primary)
-                                            .lineLimit(1)
-
-                                        Text(url.pathExtension.uppercased())
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
+                        // Song list
+                        List(selection: isSelectionMode ? $selectedSongs : nil) {
+                            ForEach(songs) { song in
+                                SongRowView(
+                                    song: song,
+                                    isPlaying: player.currentSong?.id == song.id,
+                                    accentColor: accentColor,
+                                    onTap: {
+                                        if !isSelectionMode {
+                                            player.load(song: song)
+                                            dismiss()
+                                        }
+                                    },
+                                    onEdit: {
+                                        songToEdit = song
+                                        showingEditSheet = true
+                                    }
+                                )
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        songToDelete = song
+                                        showingDeleteConfirmation = true
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
                                     }
 
-                                    Spacer()
-
-                                    if player.currentFileURL == url {
-                                        Image(systemName: "speaker.wave.2.fill")
-                                            .foregroundColor(accentColor)
+                                    Button {
+                                        songToEdit = song
+                                        showingEditSheet = true
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
                                     }
+                                    .tint(.orange)
                                 }
+                                .tag(song.id)
                             }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    fileToDelete = url
-                                    showingDeleteConfirmation = true
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
+                        }
+                        .listStyle(.plain)
+                        .searchable(text: $searchText, prompt: "Search songs")
+
+                        // Selection mode toolbar
+                        if isSelectionMode && !selectedSongs.isEmpty {
+                            SelectionToolbar(
+                                selectedCount: selectedSongs.count,
+                                accentColor: accentColor,
+                                onDelete: {
+                                    showingBatchDeleteConfirmation = true
+                                },
+                                onCancel: {
+                                    selectedSongs.removeAll()
+                                    isSelectionMode = false
                                 }
-                            }
+                            )
                         }
                     }
                 }
@@ -840,15 +874,79 @@ struct LibraryView: View {
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if !player.libraryManager.songs.isEmpty {
+                        Button(isSelectionMode ? "Cancel" : "Select") {
+                            if isSelectionMode {
+                                selectedSongs.removeAll()
+                            }
+                            isSelectionMode.toggle()
+                        }
+                        .foregroundColor(accentColor)
                     }
-                    .foregroundColor(accentColor)
+                }
+
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack(spacing: 12) {
+                        if !player.libraryManager.songs.isEmpty {
+                            Menu {
+                                ForEach(LibraryManager.SortOption.allCases, id: \.self) { option in
+                                    Button {
+                                        if sortOption == option {
+                                            sortAscending.toggle()
+                                        } else {
+                                            sortOption = option
+                                            sortAscending = true
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Text(option.rawValue)
+                                            if sortOption == option {
+                                                Image(systemName: sortAscending ? "chevron.up" : "chevron.down")
+                                            }
+                                        }
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "arrow.up.arrow.down")
+                                    .foregroundColor(accentColor)
+                            }
+
+                            Button {
+                                showingFilePicker = true
+                            } label: {
+                                Image(systemName: "plus")
+                            }
+                            .foregroundColor(accentColor)
+                        }
+
+                        Button("Done") {
+                            dismiss()
+                        }
+                        .foregroundColor(accentColor)
+                    }
                 }
             }
-            .onAppear {
-                importedFiles = player.getImportedFiles()
+            .fileImporter(
+                isPresented: $showingFilePicker,
+                allowedContentTypes: AudioPlayer.supportedTypes,
+                allowsMultipleSelection: true
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    _ = player.importFiles(from: urls)
+                case .failure(let error):
+                    player.importError = error.localizedDescription
+                }
+            }
+            .sheet(isPresented: $showingEditSheet) {
+                if let song = songToEdit {
+                    SongEditView(
+                        song: song,
+                        libraryManager: player.libraryManager,
+                        accentColor: accentColor
+                    )
+                }
             }
             .confirmationDialog(
                 "Delete this song?",
@@ -856,18 +954,429 @@ struct LibraryView: View {
                 titleVisibility: .visible
             ) {
                 Button("Delete", role: .destructive) {
-                    if let url = fileToDelete {
-                        try? player.deleteImportedFile(at: url)
-                        importedFiles = player.getImportedFiles()
+                    if let song = songToDelete {
+                        player.deleteSong(id: song.id)
                     }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                if let url = fileToDelete {
-                    Text("'\(url.deletingPathExtension().lastPathComponent)' will be removed from your library.")
+                if let song = songToDelete {
+                    Text("'\(song.displayTitle)' will be permanently removed from your library.")
                 }
             }
+            .confirmationDialog(
+                "Delete \(selectedSongs.count) songs?",
+                isPresented: $showingBatchDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Delete All", role: .destructive) {
+                    _ = player.libraryManager.deleteSongs(ids: selectedSongs)
+                    selectedSongs.removeAll()
+                    isSelectionMode = false
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("These songs will be permanently removed from your library.")
+            }
         }
+    }
+}
+
+// MARK: - Empty Library View
+
+@available(iOS 16.0, *)
+struct EmptyLibraryView: View {
+    let accentColor: Color
+    @Binding var showingFilePicker: Bool
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "music.note.house")
+                .font(.system(size: 64))
+                .foregroundColor(.gray)
+
+            VStack(spacing: 8) {
+                Text("Your Library is Empty")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+
+                Text("Add songs from the Files app to get started")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            Button(action: { showingFilePicker = true }) {
+                Label("Add from Files", systemImage: "folder.badge.plus")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(accentColor)
+                    .cornerRadius(10)
+            }
+            .padding(.top, 8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
+    }
+}
+
+// MARK: - Library Stats Header
+
+@available(iOS 16.0, *)
+struct LibraryStatsHeader: View {
+    let songCount: Int
+    let totalDuration: String
+    let totalSize: String
+    let accentColor: Color
+
+    var body: some View {
+        HStack(spacing: 16) {
+            StatBadge(icon: "music.note", value: "\(songCount)", label: "songs")
+            StatBadge(icon: "clock", value: totalDuration, label: "total")
+            StatBadge(icon: "internaldrive", value: totalSize, label: "size")
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 12)
+        .background(Color(white: 0.08))
+    }
+}
+
+@available(iOS 16.0, *)
+struct StatBadge: View {
+    let icon: String
+    let value: String
+    let label: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundColor(.gray)
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text(value)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                Text(label)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Song Row View
+
+@available(iOS 16.0, *)
+struct SongRowView: View {
+    let song: SongMetadata
+    let isPlaying: Bool
+    let accentColor: Color
+    let onTap: () -> Void
+    let onEdit: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                // Album art placeholder / format icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(white: 0.15))
+                        .frame(width: 50, height: 50)
+
+                    Image(systemName: "music.note")
+                        .font(.system(size: 20))
+                        .foregroundColor(isPlaying ? accentColor : .gray)
+                }
+
+                // Song info
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(song.displayTitle)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(isPlaying ? accentColor : .primary)
+                        .lineLimit(1)
+
+                    HStack(spacing: 6) {
+                        Text(song.displayArtist)
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+
+                        if !song.album.isEmpty {
+                            Text("•")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+
+                            Text(song.album)
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+
+                    HStack(spacing: 8) {
+                        // Format badge
+                        Text(song.fileExtension.uppercased())
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(formatColor(for: song.fileExtension))
+                            .cornerRadius(4)
+
+                        // Duration
+                        Text(song.durationFormatted)
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+
+                        // File size
+                        Text(song.fileSizeFormatted)
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                // Playing indicator
+                if isPlaying {
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(accentColor)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func formatColor(for ext: String) -> Color {
+        switch ext.lowercased() {
+        case "mp3":
+            return .blue
+        case "m4a", "aac", "alac":
+            return .purple
+        case "wav", "aiff":
+            return .green
+        case "flac":
+            return .orange
+        case "ogg":
+            return .red
+        default:
+            return .gray
+        }
+    }
+}
+
+// MARK: - Selection Toolbar
+
+@available(iOS 16.0, *)
+struct SelectionToolbar: View {
+    let selectedCount: Int
+    let accentColor: Color
+    let onDelete: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        HStack {
+            Text("\(selectedCount) selected")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.primary)
+
+            Spacer()
+
+            Button(action: onDelete) {
+                Label("Delete", systemImage: "trash")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.red)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 12)
+        .background(Color(white: 0.15))
+    }
+}
+
+// MARK: - Song Edit View
+
+@available(iOS 16.0, *)
+struct SongEditView: View {
+    @Environment(\.dismiss) var dismiss
+    @ObservedObject var libraryManager: LibraryManager
+
+    let song: SongMetadata
+    let accentColor: Color
+
+    @State private var title: String
+    @State private var artist: String
+    @State private var album: String
+    @State private var genre: String
+    @State private var year: String
+    @State private var comments: String
+    @State private var showingRename = false
+    @State private var newFileName: String
+    @State private var showingError = false
+    @State private var errorMessage = ""
+
+    init(song: SongMetadata, libraryManager: LibraryManager, accentColor: Color) {
+        self.song = song
+        self.libraryManager = libraryManager
+        self.accentColor = accentColor
+
+        _title = State(initialValue: song.title)
+        _artist = State(initialValue: song.artist)
+        _album = State(initialValue: song.album)
+        _genre = State(initialValue: song.genre)
+        _year = State(initialValue: song.year)
+        _comments = State(initialValue: song.comments)
+        _newFileName = State(initialValue: (song.fileName as NSString).deletingPathExtension)
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                // File info section
+                Section("File Information") {
+                    HStack {
+                        Text("File Name")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(song.fileName)
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                    }
+
+                    HStack {
+                        Text("Format")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(song.formatDescription)
+                            .foregroundColor(.primary)
+                    }
+
+                    HStack {
+                        Text("Duration")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(song.durationFormatted)
+                            .foregroundColor(.primary)
+                    }
+
+                    HStack {
+                        Text("Size")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(song.fileSizeFormatted)
+                            .foregroundColor(.primary)
+                    }
+
+                    if song.bitrate > 0 {
+                        HStack {
+                            Text("Bitrate")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(song.bitrateFormatted)
+                                .foregroundColor(.primary)
+                        }
+                    }
+
+                    Button {
+                        showingRename = true
+                    } label: {
+                        Label("Rename File", systemImage: "pencil")
+                            .foregroundColor(accentColor)
+                    }
+                }
+
+                // Metadata section
+                Section("Metadata") {
+                    TextField("Title", text: $title)
+                    TextField("Artist", text: $artist)
+                    TextField("Album", text: $album)
+                    TextField("Genre", text: $genre)
+                    TextField("Year", text: $year)
+                        .keyboardType(.numberPad)
+                }
+
+                // Comments section
+                Section("Comments") {
+                    TextEditor(text: $comments)
+                        .frame(minHeight: 80)
+                }
+
+                // Dates section
+                Section("History") {
+                    HStack {
+                        Text("Added")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(song.dateAdded, style: .date)
+                            .foregroundColor(.primary)
+                    }
+
+                    HStack {
+                        Text("Modified")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(song.dateModified, style: .date)
+                            .foregroundColor(.primary)
+                    }
+                }
+            }
+            .navigationTitle("Edit Song")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.gray)
+                }
+
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        saveChanges()
+                        dismiss()
+                    }
+                    .foregroundColor(accentColor)
+                    .fontWeight(.semibold)
+                }
+            }
+            .alert("Rename File", isPresented: $showingRename) {
+                TextField("File name", text: $newFileName)
+                Button("Cancel", role: .cancel) {}
+                Button("Rename") {
+                    if !libraryManager.renameFile(for: song.id, to: newFileName) {
+                        errorMessage = libraryManager.lastError ?? "Failed to rename file"
+                        showingError = true
+                    }
+                }
+            } message: {
+                Text("Enter a new name for the file")
+            }
+            .alert("Error", isPresented: $showingError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage)
+            }
+        }
+    }
+
+    private func saveChanges() {
+        libraryManager.updateMetadata(
+            for: song.id,
+            title: title,
+            artist: artist,
+            album: album,
+            genre: genre,
+            year: year,
+            comments: comments
+        )
     }
 }
 
