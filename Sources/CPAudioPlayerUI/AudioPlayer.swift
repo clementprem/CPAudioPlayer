@@ -10,6 +10,7 @@ import Combine
 import UniformTypeIdentifiers
 import CPAudioPlayer
 import AVFoundation
+import SwiftUI
 
 // MARK: - Repeat Mode
 
@@ -119,8 +120,20 @@ public class AudioPlayer: NSObject, ObservableObject {
         .mpeg4Audio,
         .wav,
         .aiff,
-        .audio
+        .audio,
+        UTType(filenameExtension: "flac") ?? .audio,
+        UTType(filenameExtension: "ogg") ?? .audio,
+        UTType(filenameExtension: "wma") ?? .audio,
+        UTType(filenameExtension: "alac") ?? .audio,
+        UTType(filenameExtension: "aac") ?? .audio,
+        UTType(filenameExtension: "caf") ?? .audio
     ]
+
+    /// The library manager for persistent song storage
+    @Published public private(set) var libraryManager = LibraryManager()
+
+    /// Currently playing song metadata
+    @Published public private(set) var currentSong: SongMetadata?
 
     /// Available EQ presets
     public static let presets: [String: [Float]] = [
@@ -172,9 +185,29 @@ public class AudioPlayer: NSObject, ObservableObject {
             importError = nil
             syncFromPlayer()
             extractAudioInfo(from: url)
+
+            // Update currentSong from library if available
+            if let song = libraryManager.getSong(for: url) {
+                currentSong = song
+            }
+
             return true
         }
         return false
+    }
+
+    /// Load a song from library by metadata
+    /// - Parameter song: The song metadata
+    /// - Returns: True if loading was successful
+    @discardableResult
+    public func load(song: SongMetadata) -> Bool {
+        guard let url = song.fileURL else {
+            importError = "File not found"
+            return false
+        }
+
+        currentSong = song
+        return load(url: url, title: song.displayTitle, artist: song.displayArtist)
     }
 
     // MARK: - File Import
@@ -188,24 +221,32 @@ public class AudioPlayer: NSObject, ObservableObject {
         stop()
         importError = nil
 
-        // Start accessing security-scoped resource
-        guard url.startAccessingSecurityScopedResource() else {
-            importError = "Cannot access the selected file"
-            return false
+        // Use LibraryManager for import
+        if let metadata = libraryManager.importFile(from: url) {
+            if let fileURL = metadata.fileURL {
+                currentSong = metadata
+                return load(url: fileURL, title: metadata.displayTitle, artist: metadata.displayArtist)
+            }
         }
 
-        defer {
-            url.stopAccessingSecurityScopedResource()
+        importError = libraryManager.lastError ?? "Failed to import file"
+        return false
+    }
+
+    /// Import multiple audio files
+    /// - Parameter urls: Array of security-scoped URLs
+    /// - Returns: Number of successfully imported files
+    @discardableResult
+    public func importFiles(from urls: [URL]) -> Int {
+        let imported = libraryManager.importFiles(from: urls)
+
+        // Load the first imported file if any
+        if let first = imported.first, let fileURL = first.fileURL {
+            currentSong = first
+            load(url: fileURL, title: first.displayTitle, artist: first.displayArtist)
         }
 
-        // Copy file to app's documents directory for persistent access
-        do {
-            let localURL = try copyToDocuments(url: url)
-            return load(url: localURL)
-        } catch {
-            importError = "Failed to import file: \(error.localizedDescription)"
-            return false
-        }
+        return imported.count
     }
 
     /// Copy a file to the app's documents directory
@@ -278,8 +319,16 @@ public class AudioPlayer: NSObject, ObservableObject {
     /// Delete an imported file
     /// - Parameter url: URL of the file to delete
     public func deleteImportedFile(at url: URL) throws {
-        let fileManager = FileManager.default
-        try fileManager.removeItem(at: url)
+        // Find the song in library and delete
+        if let song = libraryManager.getSong(for: url) {
+            if !libraryManager.deleteSong(id: song.id) {
+                throw LibraryError.deleteFailed
+            }
+        } else {
+            // Fallback: delete directly
+            let fileManager = FileManager.default
+            try fileManager.removeItem(at: url)
+        }
 
         // If this was the current file, clear it
         if currentFileURL == url {
@@ -288,7 +337,30 @@ public class AudioPlayer: NSObject, ObservableObject {
             artistName = ""
             duration = 0
             currentFileURL = nil
+            currentSong = nil
         }
+    }
+
+    /// Delete a song by ID
+    /// - Parameter id: The song ID
+    /// - Returns: True if deletion was successful
+    @discardableResult
+    public func deleteSong(id: UUID) -> Bool {
+        let song = libraryManager.getSong(id: id)
+        let wasCurrentSong = currentSong?.id == id
+
+        if libraryManager.deleteSong(id: id) {
+            if wasCurrentSong {
+                stop()
+                trackTitle = ""
+                artistName = ""
+                duration = 0
+                currentFileURL = nil
+                currentSong = nil
+            }
+            return true
+        }
+        return false
     }
 
     // MARK: - Playback Control

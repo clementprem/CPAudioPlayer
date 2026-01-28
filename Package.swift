@@ -52,7 +52,8 @@ let package = Package(
             path: "Sources/CPAudioPlayerUI",
             sources: [
                 "AudioPlayer.swift",
-                "AudioPlayerView.swift"
+                "AudioPlayerView.swift",
+                "LibraryManager.swift"
             ]
         ),
         // Tests
