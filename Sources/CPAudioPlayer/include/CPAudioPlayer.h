@@ -1,6 +1,6 @@
 //
 //  CPAudioPlayer.h
-//  
+//
 //
 //  Created by Clement Prem on 8/16/14.
 //  Copyright (c) 2014 Clement Prem. All rights reserved.
@@ -31,7 +31,10 @@ typedef enum {
     RIGHT = 1
 }CHANNEL;
 
-typedef void (^_songPlayCompletionHandler)();
+typedef void (^_songPlayCompletionHandler)(void);
+
+NS_ASSUME_NONNULL_BEGIN
+
 @interface CPAudioPlayer : NSObject
 {
     @private CFArrayRef eqPresetArray;
@@ -39,7 +42,7 @@ typedef void (^_songPlayCompletionHandler)();
 @property (nonatomic)double playBackduration;
 @property (nonatomic, strong, readonly)NSURL *songUrl;
 @property (readonly, nonatomic)double currentPlaybackTime;
-@property (nonatomic, copy)_songPlayCompletionHandler songCompletion;
+@property (nonatomic, copy, nullable)_songPlayCompletionHandler songCompletion;
 
 /**
  Audio Controll & cycle methods
@@ -89,3 +92,5 @@ typedef void (^_songPlayCompletionHandler)();
 -(void)setVauleForComponent:(NSString *)compenentId  parameter:(int)param value:(float)value;
 -(float)getVauleForComponent:(NSString *)compenentId  parameter:(int)param;
 @end
+
+NS_ASSUME_NONNULL_END

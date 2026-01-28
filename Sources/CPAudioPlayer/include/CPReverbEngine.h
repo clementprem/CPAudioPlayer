@@ -1,15 +1,19 @@
 //
 //  CPReverbEngine.h
-//  
+//
 //
 //  Created by Clement on 10/31/14.
-//  Copyright (c) 2014 Hsenid. All rights reserved.
+//  Copyright (c) 2014. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 @interface CPReverbEngine : NSObject
--(id)initWithReverbUnit:(AudioUnit)reverbUnit;
+-(instancetype)initWithReverbUnit:(AudioUnit)reverbUnit;
 -(void)setRoomType:(int)roomType;
 @end
+
+NS_ASSUME_NONNULL_END

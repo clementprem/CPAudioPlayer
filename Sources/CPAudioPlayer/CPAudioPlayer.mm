@@ -6,8 +6,8 @@
 //  Copyright (c) 2014 Clement Prem. All rights reserved.
 //
 
-#import "CPAudioPlayer.h"
-#import "CPBandEqulizer.h"
+#import "include/CPAudioPlayer.h"
+#import "include/CPBandEqulizer.h"
 #import <AVFoundation/AVFoundation.h>
 
 //:TODO

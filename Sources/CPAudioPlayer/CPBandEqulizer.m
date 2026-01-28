@@ -6,7 +6,7 @@
 //  Copyright (c) 2014. All rights reserved.
 //
 
-#import "CPBandEqulizer.h"
+#import "include/CPBandEqulizer.h"
 
 @interface CPBandEqulizer ()
 {

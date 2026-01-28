@@ -6,7 +6,7 @@
 //  Copyright (c) 2014 Hsenid. All rights reserved.
 //
 
-#import "CPReverbEngine.h"
+#import "include/CPReverbEngine.h"
 
 @interface CPReverbEngine ()
 {
